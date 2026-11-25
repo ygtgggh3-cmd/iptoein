@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Conversor IPK → EXE</title>
+<style>
+  :root { --bg:#14161a; --card:#1d2026; --line:#2c3038; --fg:#e8eaed; --mut:#9aa0a6; --acc:#5b8cff; --ok:#4cc38a; --err:#ff6b6b; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:20px; background:var(--bg); color:var(--fg); font:14px/1.45 "Segoe UI", system-ui, sans-serif; }
+  h1 { font-size:18px; margin:0 0 4px; }
+  p.sub { color:var(--mut); margin:0 0 16px; }
+  #drop { border:2px dashed var(--line); border-radius:12px; padding:34px 16px; text-align:center; background:var(--card); cursor:pointer; transition:.15s; }
+  #drop.over { border-color:var(--acc); background:#1a2233; }
+  #drop b { display:block; font-size:16px; margin-bottom:4px; }
+  #drop span { color:var(--mut); }
+  .row { display:flex; gap:8px; align-items:center; margin-top:12px; }
+  .row .lbl { color:var(--mut); width:70px; flex:none; }
+  .path { flex:1; padding:7px 10px; background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  button { background:var(--card); color:var(--fg); border:1px solid var(--line); border-radius:8px; padding:7px 12px; cursor:pointer; font:inherit; }
+  button:hover { border-color:var(--acc); }
+  button.primary { background:var(--acc); border-color:var(--acc); color:#fff; font-weight:600; width:100%; padding:11px; margin-top:16px; }
+  button.primary:disabled { opacity:.45; cursor:default; }
+  #log { margin-top:14px; height:140px; overflow:auto; background:#0e1013; border:1px solid var(--line); border-radius:8px; padding:8px 10px; font:12px/1.5 Consolas, monospace; color:var(--mut); white-space:pre-wrap; }
+  .ok { color:var(--ok); } .err { color:var(--err); }
+  #result { margin-top:10px; display:none; }
+  small { color:var(--mut); display:block; margin-top:10px; }
+</style>
+</head>
+<body>
+  <h1>Conversor IPK → EXE</h1>
+  <p class="sub">Convierte apps <b>web</b> de webOS (.ipk) en programas de Windows independientes.</p>
+
+  <div id="drop"><b>Arrastra aquí tu archivo .ipk</b><span>o haz clic para buscarlo</span></div>
+
+  <div class="row"><div class="lbl">Archivo</div><div class="path" id="ipkPath">—</div></div>
+  <div class="row"><div class="lbl">Salida</div><div class="path" id="outPath">—</div><button id="chooseOut">Cambiar…</button></div>
+
+  <button class="primary" id="go" disabled>Convertir a .exe</button>
+  <div id="log"></div>
+  <div id="result"><button id="open">Mostrar carpeta del .exe</button></div>
+  <small>Solo se pueden convertir apps web (HTML/JS/CSS). Las apps nativas de webOS no son convertibles. La carpeta generada se puede copiar a cualquier PC con Windows.</small>
+
+<script>
+const { ipcRenderer } = require('electron');
+const $ = id => document.getElementById(id);
+let ipk = null, outBase = null, lastExe = null;
+
+function log(msg, cls) { const d = document.createElement('div'); if (cls) d.className = cls; d.textContent = msg; $('log').appendChild(d); $('log').scrollTop = 1e9; }
+function setIpk(p) {
+  if (!p) return;
+  if (!/\.ipk$/i.test(p)) { log('El archivo debe terminar en .ipk', 'err'); return; }
+  ipk = p; $('ipkPath').textContent = p; $('ipkPath').title = p;
+  if (!outBase) { outBase = p.replace(/[\\/][^\\/]*$/, ''); }
+  $('outPath').textContent = outBase; $('go').disabled = false; $('result').style.display = 'none';
+}
+
+const drop = $('drop');
+['dragenter', 'dragover'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', ev => { const f = ev.dataTransfer.files[0]; if (f) setIpk(f.path); });
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => e.preventDefault());
+drop.addEventListener('click', async () => setIpk(await ipcRenderer.invoke('pick-ipk')));
+$('chooseOut').addEventListener('click', async () => { const p = await ipcRenderer.invoke('pick-out'); if (p) { outBase = p; $('outPath').textContent = p; } });
+ipcRenderer.on('log', (e, m) => log(m));
+
+$('go').addEventListener('click', async () => {
+  $('go').disabled = true; $('log').textContent = '';
+  let r = await ipcRenderer.invoke('convert', ipk, outBase, false);
+  if (!r.ok && r.code === 'NATIVE') {
+    log(r.error, 'err');
+    $('go').disabled = false;
+    return;
+  }
+  if (!r.ok) { log('Error: ' + r.error, 'err'); $('go').disabled = false; return; }
+  lastExe = r.exe; log('✔ Conversión terminada', 'ok'); $('result').style.display = 'block'; $('go').disabled = false;
+});
+$('open').addEventListener('click', () => lastExe && ipcRenderer.invoke('show', lastExe));
+</script>
+</body>
+</html>

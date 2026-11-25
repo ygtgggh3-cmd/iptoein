@@ -1,0 +1,13 @@
+{
+  "name": "conversor-ipk",
+  "productName": "ConversorIPK",
+  "version": "1.0.0",
+  "description": "Convierte apps web de webOS (.ipk) en programas de Windows (.exe)",
+  "main": "gui-main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "22.3.27"
+  }
+}

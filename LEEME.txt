@@ -1,0 +1,14 @@
+CONVERSOR IPK -> EXE
+1) Instala Node.js (para Windows 7/8/8.1 usa Node 14 o 16): https://nodejs.org
+2) Doble clic en COMPILAR.bat (necesita internet, solo la primera vez).
+3) Se crea dist\ConversorIPK-win32-x64\ConversorIPK.exe
+4) Abre ConversorIPK.exe, arrastra un .ipk web de webOS y pulsa "Convertir a .exe".
+   Obtendras una carpeta con un .exe independiente (no necesita internet ni Node).
+Para un .exe de 32 bits cambia --arch=x64 por --arch=ia32 en COMPILAR.bat.
+Solo apps web (HTML/JS/CSS); las nativas no se pueden convertir.
+
+--- Compilar con GitHub (sin instalar nada) ---
+1) Crea un repositorio en GitHub y sube TODO el contenido de esta carpeta (incluida .github).
+2) Pestaña Actions -> "Compilar ConversorIPK" -> espera a que termine (verde).
+3) Entra a la ejecucion y descarga el artefacto ConversorIPK-win32-x64 (o ia32 para 32 bits).
+4) Descomprime y abre ConversorIPK.exe.

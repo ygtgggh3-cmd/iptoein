@@ -1,0 +1,36 @@
+name: Compilar ConversorIPK
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [x64, ia32]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Empaquetar .exe
+        shell: bash
+        run: |
+          npx --yes electron-packager@17 . ConversorIPK \
+            --platform=win32 --arch=${{ matrix.arch }} \
+            --electron-version=22.3.27 \
+            --out=dist --overwrite \
+            --ignore="^/dist" --ignore="^/.github" --ignore="COMPILAR.bat"
+
+      - name: Subir resultado
+        uses: actions/upload-artifact@v4
+        with:
+          name: ConversorIPK-win32-${{ matrix.arch }}
+          path: dist/ConversorIPK-win32-${{ matrix.arch }}
