@@ -12,3 +12,9 @@ Solo apps web (HTML/JS/CSS); las nativas no se pueden convertir.
 2) Pestaña Actions -> "Compilar ConversorIPK" -> espera a que termine (verde).
 3) Entra a la ejecucion y descarga el artefacto ConversorIPK-win32-x64 (o ia32 para 32 bits).
 4) Descomprime y abre ConversorIPK.exe.
+
+--- Servicios Luna ---
+Emulados: db8 (base de datos), red (connectionmanager), ajustes, info del sistema, hora,
+gestor de apps (abre enlaces http), notificaciones, audio, energia, config, activity manager.
+Los servicios JS propios del .ipk (usr/palm/services) se ejecutan de verdad con Node.
+No soportado: servicios nativos (binarios), hardware de TV (HDMI, DRM, Magic Remote...).

@@ -46,18 +46,43 @@
   window.PalmSystem = window.PalmSystem || sys;
   window.webOSSystem = window.webOSSystem || sys;
 
-  // --- Puente de servicios Luna: responde con error controlado ---
+  // --- Puente de servicios Luna -> emulación en el proceso principal (luna.js) ---
+  var lunaSeq = 0, lunaHandlers = {}, lunaCleanup = {};
+  function lunaCall(uri, params, handler) {
+    var id = ++lunaSeq;
+    lunaHandlers[id] = handler;
+    if (window.__luna) {
+      window.__luna.call(id, uri, params || {});
+    } else {
+      setTimeout(function () { handler({ returnValue: false, errorCode: -1, errorText: 'Luna no disponible' }); }, 0);
+    }
+    // Suscripción al estado de red: se vuelve a consultar cuando Windows cambia de online/offline
+    if (params && params.subscribe && /connectionmanager\/getstatus/i.test(uri)) {
+      var again = function () { lunaCall(uri, Object.assign({}, params, { subscribe: false }), handler); };
+      window.addEventListener('online', again);
+      window.addEventListener('offline', again);
+      lunaCleanup[id] = function () { window.removeEventListener('online', again); window.removeEventListener('offline', again); };
+    }
+    return id;
+  }
+  function lunaCancel(id) {
+    delete lunaHandlers[id];
+    if (lunaCleanup[id]) { lunaCleanup[id](); delete lunaCleanup[id]; }
+    if (window.__luna) window.__luna.cancel(id);
+  }
+  if (window.__luna) window.__luna.onReply(function (m) { var h = lunaHandlers[m.id]; if (h) h(m.payload); });
+
   window.PalmServiceBridge = function () {
-    var self = this;
+    var self = this, ids = [];
     this.onservicecallback = null;
     this.call = function (uri, params) {
-      setTimeout(function () {
-        if (typeof self.onservicecallback === 'function') {
-          self.onservicecallback(JSON.stringify({ returnValue: false, errorCode: -1, errorText: 'Servicio webOS no disponible en Windows: ' + uri }));
-        }
-      }, 0);
+      var p = {};
+      try { p = JSON.parse(params || '{}'); } catch (e) {}
+      ids.push(lunaCall(uri, p, function (res) {
+        if (typeof self.onservicecallback === 'function') self.onservicecallback(JSON.stringify(res));
+      }));
     };
-    this.cancel = function () {};
+    this.cancel = function () { ids.forEach(lunaCancel); ids = []; };
   };
 
   // --- webOS.js / webOSTV.js (API de alto nivel mínima) ---
@@ -73,9 +98,16 @@
   webOSObj.service = webOSObj.service || {
     request: function (uri, opts) {
       opts = opts || {};
-      var res = { returnValue: false, errorCode: -1, errorText: 'Servicio webOS no disponible en Windows: ' + uri };
-      setTimeout(function () { opts.onFailure && opts.onFailure(res); opts.onComplete && opts.onComplete(res); }, 0);
-      return { cancel: function () {}, send: function () {} };
+      var full = String(uri).replace(/\/+$/, '');
+      if (opts.method) full += '/' + opts.method;
+      var params = Object.assign({}, opts.parameters || {});
+      if (opts.subscribe || opts.resubscribe) params.subscribe = true;
+      var id = lunaCall(full, params, function (res) {
+        if (res && res.returnValue === false) { opts.onFailure && opts.onFailure(res); }
+        else { opts.onSuccess && opts.onSuccess(res); }
+        opts.onComplete && opts.onComplete(res);
+      });
+      return { cancel: function () { lunaCancel(id); }, send: function () {} };
     }
   };
   window.webOS = webOSObj;

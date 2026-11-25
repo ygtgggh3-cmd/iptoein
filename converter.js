@@ -137,9 +137,21 @@ function convert(ipkPath, outBase, opts) {
     const cfg = { id: info.id, title, version: info.version || '1.0.0', main: info.main || 'index.html',
       icon: info.largeIcon || info.icon || null, width: w, height: h, fullscreen: false, appinfo: info };
     fs.writeFileSync(path.join(appRoot, 'app-config.json'), JSON.stringify(cfg, null, 2));
-    for (const f of ['main.js', 'preload.js', 'webos-shim.js']) {
+    for (const f of ['main.js', 'preload.js', 'webos-shim.js', 'luna.js']) {
       fs.copyFileSync(path.join(__dirname, 'template', f), path.join(appRoot, f));
     }
+    copyDir(path.join(__dirname, 'template', 'service-runtime'), path.join(appRoot, 'service-runtime'));
+
+    // Servicios JS propios del .ipk (usr/palm/services/<id>/): se incluyen para ejecutarlos con Node
+    const svcDirs = [];
+    (function walk(d) {
+      for (const f of fs.readdirSync(d, { withFileTypes: true })) {
+        const p = path.join(d, f.name);
+        if (f.isDirectory()) walk(p); else if (f.name === 'services.json') svcDirs.push(path.dirname(p));
+      }
+    })(tmp);
+    svcDirs.forEach(sd => copyDir(sd, path.join(appRoot, 'services', path.basename(sd))));
+    if (svcDirs.length) log('Servicios incluidos: ' + svcDirs.map(d => path.basename(d)).join(', '));
     fs.writeFileSync(path.join(appRoot, 'package.json'), JSON.stringify({ name: 'webos-app', productName: title, version: String(cfg.version), main: 'main.js' }, null, 2));
 
     log('Listo: ' + path.join(outDir, newExe));
