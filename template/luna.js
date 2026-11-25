@@ -93,7 +93,7 @@ class Luna {
     this.shell = opts.shell || null;
     this.notify = opts.notify || (() => {});
     this.execPath = opts.execPath || process.execPath;
-    this.runtimeModules = opts.runtimeModules || path.join(this.appRoot, 'service-runtime', 'node_modules');
+    this.runtimeModules = opts.runtimeModules || path.join(this.appRoot, 'service-runtime', 'modules');
     this.db = new DB(opts.userData ? path.join(opts.userData, 'db8.json') : null);
     this.settings = { localeInfo: { locales: { UI: (opts.locale || 'en-US') } }, volume: 50, muted: false };
     this.builtins = {};

@@ -49,7 +49,7 @@ function setupLuna() {
   luna = new Luna({
     userData: app.getPath('userData'), appRoot: __dirname, appInfo: cfg.appinfo, shell,
     locale: app.getLocale(), execPath: process.execPath,
-    runtimeModules: path.join(__dirname, 'service-runtime', 'node_modules'),
+    runtimeModules: path.join(__dirname, 'service-runtime', 'modules'),
     notify: (title, body) => { try { new Notification({ title, body }).show(); } catch (e) {} }
   });
   ipcMain.on('luna-call', (ev, msg) => {
