@@ -18,3 +18,8 @@ Emulados: db8 (base de datos), red (connectionmanager), ajustes, info del sistem
 gestor de apps (abre enlaces http), notificaciones, audio, energia, config, activity manager.
 Los servicios JS propios del .ipk (usr/palm/services) se ejecutan de verdad con Node.
 No soportado: servicios nativos (binarios), hardware de TV (HDMI, DRM, Magic Remote...).
+
+--- IPTV / HLS ---
+Las apps que reproducen .m3u8 con <video> (como en la TV) funcionan: el programa usa hls.js incluido.
+Si la app ya trae su propio hls.js/dash.js, se usa el de la app.
+No soportado: MPEG-TS directo, UDP/multicast, RTSP, RTMP y DRM (Widevine).

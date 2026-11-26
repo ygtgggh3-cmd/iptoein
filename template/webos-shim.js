@@ -131,4 +131,81 @@
       try { document.dispatchEvent(new CustomEvent('webOSRelaunch', { detail: {} })); } catch (e) {}
     }, 0);
   });
+
+  // --- HLS (.m3u8) en Chromium: reproducción con hls.js (la TV lo reproduce de forma nativa) ---
+  (function () {
+    try { if (document.createElement('video').canPlayType('application/vnd.apple.mpegurl')) return; } catch (e) {}
+    var proto = window.HTMLMediaElement && HTMLMediaElement.prototype;
+    var desc = proto && Object.getOwnPropertyDescriptor(proto, 'src');
+    if (!desc || !desc.set) return;
+    var M3U8 = /\.m3u8(\?|#|$)/i, HLS_TYPE = /mpegurl/i;
+    function isHls(url, type) { return M3U8.test(url || '') || HLS_TYPE.test(type || ''); }
+
+    function detach(v) {
+      var h = v.__hls;
+      v.__hls = null; v.__hlsSrc = null;
+      if (h) { try { h.destroy(); } catch (e) {} }
+    }
+    function attach(v, url) {
+      var H = window.__loadHls && window.__loadHls();
+      if (!H || !H.isSupported()) { desc.set.call(v, url); return; }
+      detach(v);
+      var hls = new H({ enableWorker: true });
+      var retries = 0;
+      v.__hls = hls; v.__hlsSrc = url;
+      hls.on(H.Events.ERROR, function (ev, data) {
+        if (!data || !data.fatal) return;
+        if (retries++ < 3) {
+          if (data.type === H.ErrorTypes.NETWORK_ERROR) { hls.startLoad(); return; }
+          if (data.type === H.ErrorTypes.MEDIA_ERROR) { hls.recoverMediaError(); return; }
+        }
+        detach(v);
+        try { v.dispatchEvent(new Event('error')); } catch (e) {}
+      });
+      hls.loadSource(url);
+      hls.attachMedia(v);
+    }
+
+    Object.defineProperty(proto, 'src', {
+      configurable: true, enumerable: desc.enumerable,
+      get: function () { return this.__hlsSrc || desc.get.call(this); },
+      set: function (u) {
+        u = String(u);
+        if (this.__hls && /^blob:/i.test(u)) { desc.set.call(this, u); return; } // MediaSource de hls.js
+        if (isHls(u)) attach(this, u); else { detach(this); desc.set.call(this, u); }
+      }
+    });
+    var origSetAttr = Element.prototype.setAttribute;
+    Element.prototype.setAttribute = function (n, val) {
+      if (this instanceof HTMLMediaElement && String(n).toLowerCase() === 'src') { this.src = val; return; }
+      return origSetAttr.apply(this, arguments);
+    };
+
+    // <video src="...m3u8"> y <video><source src="...m3u8"></video> en el HTML
+    function scan(v) {
+      if (v.__hls) return;
+      var s = v.getAttribute('src');
+      if (s && isHls(s)) { attach(v, s); return; }
+      var srcs = v.querySelectorAll('source');
+      for (var i = 0; i < srcs.length; i++) {
+        var u = srcs[i].getAttribute('src'), t = srcs[i].getAttribute('type');
+        if (!u) continue;
+        if (isHls(u, t)) { attach(v, u); return; }
+        if (!t || v.canPlayType(t)) return; // otra fuente reproducible va primero
+      }
+    }
+    function scanTree(n) {
+      if (n.nodeType !== 1) return;
+      if (n.tagName === 'VIDEO' || n.tagName === 'AUDIO') scan(n);
+      else if (n.tagName === 'SOURCE' && n.parentNode && n.parentNode.tagName) { var p = n.parentNode; if (p.tagName === 'VIDEO' || p.tagName === 'AUDIO') scan(p); }
+      var list = n.querySelectorAll ? n.querySelectorAll('video,audio') : [];
+      for (var i = 0; i < list.length; i++) scan(list[i]);
+    }
+    new MutationObserver(function (muts) {
+      muts.forEach(function (m) {
+        if (m.type === 'childList') m.addedNodes.forEach(scanTree);
+        else if (m.type === 'attributes') scanTree(m.target);
+      });
+    }).observe(document, { childList: true, subtree: true, attributes: true, attributeFilter: ['src', 'type'] });
+  })();
 })();

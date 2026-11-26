@@ -29,6 +29,10 @@ jobs:
             --out=dist --overwrite \
             --ignore="^/dist" --ignore="^/.github" --ignore="COMPILAR.bat"
 
+      - name: Verificar que hls.js quedó incluido
+        shell: bash
+        run: test -f "dist/ConversorIPK-win32-${{ matrix.arch }}/resources/app/node_modules/hls.js/dist/hls.min.js"
+
       - name: Subir resultado
         uses: actions/upload-artifact@v4
         with:

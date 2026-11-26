@@ -9,5 +9,8 @@
   },
   "devDependencies": {
     "electron": "22.3.27"
+  },
+  "dependencies": {
+    "hls.js": "1.5.17"
   }
 }

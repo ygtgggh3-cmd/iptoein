@@ -14,5 +14,19 @@ window.__luna = {
   onReply: cb => handlers.push(cb)
 };
 
+// hls.js bajo demanda (solo si la app reproduce .m3u8); se aísla de AMD/CommonJS de la página
+let hlsCache = null;
+window.__loadHls = () => {
+  if (hlsCache) return hlsCache;
+  try {
+    const src = fs.readFileSync(path.join(__dirname, 'hls.min.js'), 'utf8');
+    const prev = window.Hls, had = 'Hls' in window;
+    new Function('exports', 'module', 'define', src).call(window);
+    hlsCache = window.Hls;
+    if (had) window.Hls = prev; else delete window.Hls;
+  } catch (e) { return null; }
+  return hlsCache;
+};
+
 const shim = fs.readFileSync(path.join(__dirname, 'webos-shim.js'), 'utf8');
 (0, eval)(shim);

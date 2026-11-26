@@ -141,6 +141,9 @@ function convert(ipkPath, outBase, opts) {
       fs.copyFileSync(path.join(__dirname, 'template', f), path.join(appRoot, f));
     }
     copyDir(path.join(__dirname, 'template', 'service-runtime'), path.join(appRoot, 'service-runtime'));
+    const hlsFile = path.join(__dirname, 'node_modules', 'hls.js', 'dist', 'hls.min.js');
+    if (fs.existsSync(hlsFile)) { fs.copyFileSync(hlsFile, path.join(appRoot, 'hls.min.js')); log('Soporte HLS (.m3u8) incluido'); }
+    else log('AVISO: hls.js no encontrado; las apps no podrán reproducir .m3u8 (ejecuta npm install)');
 
     // Servicios JS propios del .ipk (usr/palm/services/<id>/): se incluyen para ejecutarlos con Node
     const svcDirs = [];
